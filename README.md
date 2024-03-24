@@ -1,5 +1,7 @@
 # FinnhubDotNet
 
+#### Disclaimer
+- This is <b>not</b> the official C# SDK of Finnhub. This is a personal project aimed to contribute to the open-source community.
 
 #### Introduction
 - This is a C# wrapper of the Finnhub Websocket client.
