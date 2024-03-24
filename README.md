@@ -42,5 +42,5 @@
 - Stability improvement.
 - Comprehensive exception handling.
 
-#### Contact
+#### Contact/Contribute
 - My email is zizh3ng@gmail.com. Please let me know if you have any suggestions or questions on this project.
