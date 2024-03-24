@@ -10,8 +10,7 @@
 namespace Test {
     internal class Program {
         static async Task Main(string[] args) {
-            var creds = File.ReadLines("credential");
-            string yourKey = creds.First();
+            string yourKey = "";
             var ws = new FinnhubDotNet.Websocket.FinnhubStreamingClient(yourKey);
             await ws.ConnectAsync();
             await ws.SubscribeTradeAsync("BINANCE:BTCUSDT");
