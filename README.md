@@ -7,31 +7,27 @@
 - This is a C# wrapper of the Finnhub Websocket client.
 - Sample usage:
 ```
-﻿namespace Demo {
+namespace Test {
     internal class Program {
         static async Task Main(string[] args) {
             string yourKey = "";
-            var ws = new FinnhubDotNet.Websocket.FinnhubWsClient(yourKey);
+            var ws = new FinnhubDotNet.Websocket.FinnhubStreamingClient(yourKey);
             await ws.ConnectAsync();
             await ws.SubscribeTradeAsync("BINANCE:BTCUSDT");
+            await ws.SubscribeTradeAsync("BINANCE:ETHUSDT");
             ws.tradeUpdate += (trades) => {
-                var trade = trades[0];
-                Console.WriteLine(trade.symbol);
-                Console.WriteLine(trade.price);
-                Console.WriteLine(trade.volume);
-                Console.WriteLine(trade.timeUtc);
+                foreach (var trade in trades) {
+                    Console.WriteLine(trade);
+                }
             };
 
             while (true) {
-                await Task.Delay(1000);
+                await Task.Delay(5000);
             }
         }
     }
 }
 ```
-
-#### Features
-- C#-wrapped Finnhub Websocket client.
 
 #### Advantages
 - Efficient data handling: The data receiving logic is implemented with a duplex pipe, minimizing memory overheads and ensuring low latency.
