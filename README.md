@@ -40,6 +40,7 @@
 #### Upcoming Updates
 - REST endpoints.
 - Stability improvement.
+- Comprehensive exception handling.
 
 #### Contact
 - My email is zizh3ng@gmail.com. Please let me know if you have any suggestions or questions on this project.
