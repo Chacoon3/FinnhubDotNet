@@ -1,5 +1,7 @@
 # FinnhubDotNet
 
+
+#### Introduction
 - This is a C# wrapper of the Finnhub Websocket client.
 - Sample usage:
 ```
@@ -25,3 +27,10 @@
     }
 }
 ```
+
+#### Features
+- Efficient streaming data handling: The data receiving logic is implemented with a duplex pipe, minimizing memory overheads and ensure low latency.
+- Simple interfaces.
+
+#### Contact
+- My email is zizh3ng@gmail.com. Please let me know if you have any suggestions on this project.
