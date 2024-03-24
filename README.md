@@ -32,12 +32,12 @@
 - C#-wrapped Finnhub Websocket client.
 
 #### Advantages
-- Efficient data handling: The data receiving logic is implemented with a duplex pipe, minimizing memory overheads and ensure low latency.
-- Simple interfaces.
+- Efficient data handling: The data receiving logic is implemented with a duplex pipe, minimizing memory overheads and ensuring low latency.
+- Minimalistic interfaces.
 
-#### Future Updates
+#### Upcoming Updates
 - REST endpoints.
 - Stability improvement.
 
 #### Contact
-- My email is zizh3ng@gmail.com. Please let me know if you have any suggestions on this project.
+- My email is zizh3ng@gmail.com. Please let me know if you have any suggestions or questions on this project.
