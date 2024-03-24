@@ -9,7 +9,7 @@ using System.Text;
 
 namespace FinnhubDotNet.Websocket
 {
-    public class FinnhubWsClient : IDisposable
+    public class FinnhubStreamingClient : IDisposable
     {
 
         ClientWebSocket _ws;
@@ -24,7 +24,7 @@ namespace FinnhubDotNet.Websocket
         public event Action<News[]> newsUpdate = delegate { };
         public event Action<PressRelease[]> pressReleaseUpdate = delegate { };
 
-        public FinnhubWsClient(string key)
+        public FinnhubStreamingClient(string key)
         {
             _ws = new ClientWebSocket();
             this.key = key;
@@ -41,31 +41,36 @@ namespace FinnhubDotNet.Websocket
         public async Task ConnectAsync()
         {
             await _ws.ConnectAsync(new Uri($"wss://ws.finnhub.io?token={key}"), CancellationToken.None);
-            var receiverThread = new Thread(() => ReceiveLoop());
+            var receiverThread = new Thread(ReceiveLoop);
             receiverThread.IsBackground = true;
             receiverThread.Start();
         }
 
-        #region deserialization and event dispatching
         private void ReceiveString(string texts)
         {
             try {
                 var token = JToken.Parse(texts);
                 var messageType = token["type"].ToString();
-                if (messageType == MessageType.ping) {
-                    return;
-                }
-                var payload = token["data"].ToString();
                 switch (messageType) {
+                    case MessageType.ping:
+                        break;
+                    case MessageType.error:
+                        var msg = token["msg"].ToString();
+                        var error = new StreamingException(msg);
+                        ExceptionHandler(error);
+                        break;
                     case MessageType.tradeUpdate:
+                        var payload = token["data"].ToString();
                         var trade = JsonConvert.DeserializeObject<Trade[]>(payload);
                         tradeUpdate(trade);
                         break;
                     case MessageType.newsUpdate:
+                        payload = token["data"].ToString();
                         var news = JsonConvert.DeserializeObject<News[]>(payload);
                         newsUpdate(news);
                         break;
                     case MessageType.pressReleaseUpdate:
+                        payload = token["data"].ToString();
                         var pressRelease = JsonConvert.DeserializeObject<PressRelease[]>(payload);
                         pressReleaseUpdate(pressRelease);
                         break;
@@ -75,10 +80,8 @@ namespace FinnhubDotNet.Websocket
                 ExceptionHandler(e);
             }
         }
-        #endregion
 
-        #region event loop
-        private async Task ReceiveLoop()
+        private async void ReceiveLoop()
         {
             while (_ws.State == WebSocketState.Open) {
                 var memory = inbound.Writer.GetMemory();
@@ -94,7 +97,6 @@ namespace FinnhubDotNet.Websocket
                 }
             }
         }
-        #endregion
 
         #region subscription
         private async Task SubscribeAsync<T>(T msg) where T : Subscription

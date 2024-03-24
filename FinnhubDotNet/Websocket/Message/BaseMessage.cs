@@ -3,7 +3,7 @@
 namespace FinnhubDotNet.Websocket.Message
 {
 
-    public abstract class BaseMessage
+    internal abstract class BaseMessage
     {
         [JsonProperty("type")]
         internal string msgType { get; set; }

@@ -16,5 +16,9 @@ namespace FinnhubDotNet.Data
         public string source { get; set; }
         public string summary { get; set; }
         public string url { get; set; }
+
+        public override string ToString() {
+            return $"{category} news: {headline} {timeUtc}";
+        }
     }
 }

@@ -15,5 +15,9 @@ namespace FinnhubDotNet.Data
         [JsonIgnore]
         public string[] symbols { get; set; }
         public string url { get; set; }
+
+        public override string ToString() {
+            return $"PressRelease: {headline} {timeUtc}";
+        }
     }
 }
