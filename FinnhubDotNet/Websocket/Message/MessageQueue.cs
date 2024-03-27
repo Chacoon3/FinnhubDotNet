@@ -22,5 +22,11 @@
                 return msgQueue.Dequeue();
             }
         }
+
+        public bool TryDequeue(out BaseMessage msg) {
+            lock (lockObj) {
+                return msgQueue.TryDequeue(out msg);
+            }
+        }
     }
 }
