@@ -13,6 +13,10 @@
     <RepositoryType>git</RepositoryType>
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+    <FileVersion>1.0.1</FileVersion>
+    <PackageReleaseNotes>Added error handling feature.
+Renamed the websocket client class.</PackageReleaseNotes>
+    <Version>1.0.1</Version>
   </PropertyGroup>
 
   <ItemGroup>
