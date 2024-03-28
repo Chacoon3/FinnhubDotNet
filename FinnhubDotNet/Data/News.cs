@@ -6,7 +6,7 @@ namespace FinnhubDotNet.Data
     {
         public string category { get; set; }
         [JsonProperty]
-        internal long datetime { get; set; } // unix miliseconds
+        private long datetime { get; set; } // unix miliseconds
         [JsonIgnore]
         public DateTime timeUtc => DateTimeOffset.FromUnixTimeMilliseconds(datetime).UtcDateTime;
         public string headline { get; set; }

@@ -30,7 +30,7 @@ namespace Test {
 ```
 
 #### Advantages
-- Efficient data handling: The data receiving logic is implemented with a duplex pipe, minimizing memory overheads and ensuring low latency.
+- Efficient data handling: The data receiving logic is implemented with a pipe, minimizing memory overheads and ensuring low latency.
 - Minimalistic interfaces.
 
 #### Upcoming Updates
