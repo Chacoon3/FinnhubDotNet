@@ -7,7 +7,7 @@
             await ws.ConnectAsync();
             await ws.SubscribeTradeAsync("BINANCE:BTCUSDT");
             await ws.SubscribeTradeAsync("BINANCE:ETHUSDT");
-            //await ws.SubscribeNewsAsync("AAPL");
+            await ws.SubscribeNewsAsync("AAPL");
             ws.tradeUpdate += (trades) => {
                 foreach (var trade in trades) {
                     Console.WriteLine(trade);

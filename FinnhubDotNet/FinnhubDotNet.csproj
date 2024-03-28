@@ -14,8 +14,8 @@
     <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
     <FileVersion>{$Version}</FileVersion>
-    <PackageReleaseNotes></PackageReleaseNotes>
-    <Version>1.0.5</Version>
+    <PackageReleaseNotes>Debug</PackageReleaseNotes>
+    <Version>1.0.6</Version>
   </PropertyGroup>
 
   <ItemGroup>
