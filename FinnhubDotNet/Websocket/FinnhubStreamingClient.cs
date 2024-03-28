@@ -10,11 +10,9 @@ using System.Text;
 namespace FinnhubDotNet.Websocket; 
 public class FinnhubStreamingClient : IDisposable {
 
-    ClientWebSocket _ws;
-    private string key;
-    private Pipe outbound;
+    ClientWebSocket websocket;
+    private Uri uri;
     private Pipe inbound;
-    private MessageQueue msgQueue;
     private bool isSending = false;
     private readonly object lockObj = new object();
 
@@ -23,11 +21,9 @@ public class FinnhubStreamingClient : IDisposable {
     public event Action<PressRelease[]> pressReleaseUpdate = delegate { };
 
     public FinnhubStreamingClient(string key) {
-        _ws = new ClientWebSocket();
-        this.key = key;
+        websocket = new ClientWebSocket();
+        uri = new Uri($"wss://ws.finnhub.io?token={key}"); 
         inbound = new Pipe();
-        outbound = new Pipe();
-        msgQueue = new MessageQueue();
     }
 
     private static void ExceptionHandler(Exception ex) {
@@ -35,7 +31,7 @@ public class FinnhubStreamingClient : IDisposable {
     }
 
     public async Task ConnectAsync() {
-        await _ws.ConnectAsync(new Uri($"wss://ws.finnhub.io?token={key}"), CancellationToken.None);
+        await websocket.ConnectAsync(uri, CancellationToken.None);
         var receiverThread = new Thread(ReceiveLoop);
         receiverThread.IsBackground = true;
         receiverThread.Start();
@@ -76,23 +72,31 @@ public class FinnhubStreamingClient : IDisposable {
     }
 
     private async void ReceiveLoop() {
-        while (_ws.State == WebSocketState.Open) {
-            var memory = inbound.Writer.GetMemory(1024*5);
-            var data = await _ws.ReceiveAsync(memory, CancellationToken.None);
-            inbound.Writer.Advance(data.Count);
-            await inbound.Writer.FlushAsync();
-            if (data.EndOfMessage) {
-                var rawData = await inbound.Reader.ReadAsync();
-                var texts = Encoding.UTF8.GetString(rawData.Buffer.ToArray());
-                inbound.Reader.AdvanceTo(rawData.Buffer.End);
-                ReceiveString(texts);
+        try {
+            while (websocket.State == WebSocketState.Open) {
+                var memory = inbound.Writer.GetMemory(1024 * 5);
+                var data = await websocket.ReceiveAsync(memory, CancellationToken.None);
+                inbound.Writer.Advance(data.Count);
+                await inbound.Writer.FlushAsync();
+                if (data.EndOfMessage) {
+                    var rawData = await inbound.Reader.ReadAsync();
+                    var texts = Encoding.UTF8.GetString(rawData.Buffer.ToArray());
+                    inbound.Reader.AdvanceTo(rawData.Buffer.End);
+                    ReceiveString(texts);
+                }
             }
+        }
+        finally {
+            inbound.Reader.Complete();
+            inbound.Writer.Complete();
+            inbound.Reset();
+            await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
         }
     }
 
     #region subscription
     private async Task SubscribeAsync(Subscription msg) {
-        await _ws.SendAsync(msg.ToArraySegment(), WebSocketMessageType.Text, true, CancellationToken.None);
+        await websocket.SendAsync(msg.ToArraySegment(), WebSocketMessageType.Text, true, CancellationToken.None);
     }
 
     public async Task SubscribeTradeAsync(string symbol) {
@@ -112,9 +116,10 @@ public class FinnhubStreamingClient : IDisposable {
     #endregion
 
     public void Dispose() {
-        _ws.Dispose();
+        websocket.Dispose();
+        inbound.Reader.Complete();
+        inbound.Writer.Complete();
         inbound.Reset();
-        outbound.Reset();
         GC.SuppressFinalize(this);
     }
 }
