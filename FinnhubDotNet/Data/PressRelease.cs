@@ -11,9 +11,13 @@ namespace FinnhubDotNet.Data
         public string fullText { get; set; }
         public string headline { get; set; }
         [JsonProperty]
-        public string symbol;
+        private string symbol;
         [JsonIgnore]
-        private string[] _symbols;
+        /*
+         *  symbol returned from the client is a comma delimited string
+         *  we use an array to cache the split symbols
+         */
+        private string[] _symbols; 
         [JsonIgnore]
         public string[] symbols => _symbols ??= symbol.Split(',');
         public string url { get; set; }

@@ -11,11 +11,10 @@ namespace FinnhubDotNet.Websocket;
 public class FinnhubStreamingClient : IDisposable {
 
     ClientWebSocket websocket;
-    private Uri uri;
-    private Pipe inbound;
+    private readonly Uri uri;
+    private Pipe inbound = new Pipe();
     private bool isSending = false;
     private readonly object lockObj = new object();
-    private Thread receiveLoop;
 
     public event Action<Trade[]> tradeUpdate = delegate { };
     public event Action<News[]> newsUpdate = delegate { };
@@ -23,14 +22,19 @@ public class FinnhubStreamingClient : IDisposable {
     public event Action<FinnhubStreamingClient> onConnected = delegate { };
     public event Action<FinnhubStreamingClient> onDisconnected = delegate { };
     public event Action<Exception> onError = delegate { };
-    public WebSocketCloseStatus? closeStatus => websocket.CloseStatus;
-    public WebSocketState state => websocket.State;
+    public WebSocketCloseStatus? closeStatus => websocket?.CloseStatus;
+    public WebSocketState state {
+        get {
+            if (websocket == null) {
+                return WebSocketState.Closed;
+            }
+            return websocket.State;
+        }
+    }
 
 
     public FinnhubStreamingClient(string key) {
-        websocket = new ClientWebSocket();
         uri = new Uri($"wss://ws.finnhub.io?token={key}");
-        inbound = new Pipe();
     }
 
     private void DeserializeAndNotify(string texts) {
@@ -103,29 +107,58 @@ public class FinnhubStreamingClient : IDisposable {
         var msg = Subscription.GetPressReleaseSubscription(symbol);
         await SubscribeAsync(msg);
     }
+    #endregion
 
+    /// <summary>
+    /// Create a new client websocket instance and connect it to Finnhub.
+    /// </summary>
+    /// <remarks>Connect event will be raised only if there is no active websocket and a new instance is created</remarks>
     public async Task ConnectAsync() {
-        await websocket.ConnectAsync(uri, CancellationToken.None);
-        var receiverThread = new Thread(ReceiveLoop);
-        receiverThread.IsBackground = true;
-        receiverThread.Start();
-        onConnected(this);
-    }
+        bool isInactive;
+        if (websocket != null) {
+            switch (websocket.State) {
+                case WebSocketState.Connecting:
+                case WebSocketState.Open:
+                    isInactive = false;
+                    break;
+                default:
+                    isInactive = true;
+                    break;
+            }
+        }
+        else {
+            isInactive = true;
+        }
 
-    public async Task DisconnectAsync() {
-        if (websocket.State == WebSocketState.Open || websocket.State == WebSocketState.Connecting) {
-            await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-            inbound.Reader.Complete();
-            inbound.Writer.Complete();
-            inbound.Reset();
-            onDisconnected(this);
+        if (isInactive) {
+            websocket = new ClientWebSocket();
+            await websocket.ConnectAsync(uri, CancellationToken.None);
+            await Task.Factory.StartNew(ReceiveLoop, TaskCreationOptions.LongRunning);
+            onConnected(this);
         }
     }
-    #endregion
+
+    /// <summary>
+    /// Disconnect and dispose current websocket instance if any.
+    /// </summary>
+    /// <remarks>Disconnect event will be raised only if there is an active websocket being closed</remarks>
+    public async Task DisconnectAsync() {
+        if (websocket == null) {
+            return;
+        }
+        if (websocket.State == WebSocketState.Open || websocket.State == WebSocketState.Connecting) {
+            await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+            onDisconnected(this);
+        }
+        websocket.Dispose();
+        websocket = null;
+        inbound.Reader.Complete();
+        inbound.Writer.Complete();
+        inbound.Reset();
+    }
 
     public void Dispose() {
         DisconnectAsync().Wait();
-        websocket.Dispose();
         GC.SuppressFinalize(this);
     }
 }
