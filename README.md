@@ -6,6 +6,7 @@
 #### Installation
 - .NET CLI: ```dotnet add package FinnhubDotNet --version 1.0.5```
 - Or search <b>FinnhubDotNet</b> in Visual Studio using NugetPackageManager.
+- Or download the <b>./FinnhubDotNet</b> folder and build the class library locally.
 
 #### Sample Usage
 ```
