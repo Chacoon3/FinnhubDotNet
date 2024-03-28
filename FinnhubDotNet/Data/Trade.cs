@@ -7,9 +7,9 @@ namespace FinnhubDotNet.Data
         [JsonProperty("s")]
         public string symbol { get; set; }
         [JsonProperty("p")]
-        public string price { get; set; }
+        public decimal price { get; set; }
         [JsonProperty("v")]
-        public string volume { get; set; }
+        public decimal volume { get; set; }
         [JsonProperty("t")]
         private long timestamp { get; set; } // unix miliseconds
         [JsonIgnore]
