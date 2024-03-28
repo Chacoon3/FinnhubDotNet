@@ -5,7 +5,7 @@ namespace FinnhubDotNet.Data
     public class PressRelease
     {
         [JsonProperty]
-        internal long datetime { get; set; } // unix miliseconds
+        private long datetime { get; set; } // unix miliseconds
         [JsonIgnore]
         public DateTime timeUtc => DateTimeOffset.FromUnixTimeMilliseconds(datetime).UtcDateTime;
         public string fullText { get; set; }
