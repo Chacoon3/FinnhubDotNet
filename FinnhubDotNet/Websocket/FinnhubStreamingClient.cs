@@ -12,9 +12,13 @@ public class FinnhubStreamingClient : IDisposable {
 
     ClientWebSocket websocket;
     private readonly Uri uri;
-    private Pipe inbound = new Pipe();
+    private Pipe inbound;
+#pragma warning disable CS0414 // The field 'FinnhubStreamingClient.isSending' is assigned but its value is never used
     private bool isSending = false;
-    private readonly object lockObj = new object();
+#pragma warning restore CS0414 // The field 'FinnhubStreamingClient.isSending' is assigned but its value is never used
+    private readonly object counterLock = new object();
+    private int countSubscriptions = 0;
+    private int sizehint = 1024 * 4;    
 
     public event Action<Trade[]> tradeUpdate = delegate { };
     public event Action<News[]> newsUpdate = delegate { };
@@ -35,6 +39,28 @@ public class FinnhubStreamingClient : IDisposable {
 
     public FinnhubStreamingClient(string key) {
         uri = new Uri($"wss://ws.finnhub.io?token={key}");
+        var pipeOptions = new PipeOptions(minimumSegmentSize:4096);
+        inbound =  new Pipe(pipeOptions);
+    }
+
+    private void UpdateSizeHint() {
+        /*
+          * one trade is about 134bytes, the rest is about 60b.
+          * assume 10 trades per symbol per message. the overall size of a message is 60 + 134 * 5 * S where S is the number of symbols.
+          */
+        int min = 4096; // at least 4KB
+        int max = 1024 * 1024; // at most 1 mb
+        int estimate = 60 + 134 * 10 * countSubscriptions;
+        if (estimate < min) { 
+            estimate = min;
+        }
+        if (estimate % min != 0) {
+            estimate = ((estimate / min) + 1) * min;
+        }
+        if (estimate > max) {
+            estimate = max;
+        }
+        sizehint = estimate;
     }
 
     private void DeserializeAndNotify(string texts) {
@@ -66,7 +92,7 @@ public class FinnhubStreamingClient : IDisposable {
     private async void ReceiveLoop() {
         try {
             while (websocket.State == WebSocketState.Open) {
-                var memory = inbound.Writer.GetMemory(1024 * 4);
+                var memory = inbound.Writer.GetMemory(sizehint);
                 var data = await websocket.ReceiveAsync(memory, CancellationToken.None);
                 inbound.Writer.Advance(data.Count);
                 await inbound.Writer.FlushAsync();
@@ -87,6 +113,10 @@ public class FinnhubStreamingClient : IDisposable {
     private async Task SubscribeAsync(Subscription msg) {
         try {
             await websocket.SendAsync(msg.ToArraySegment(), WebSocketMessageType.Text, true, CancellationToken.None);
+            lock (counterLock) {
+                countSubscriptions++;
+                UpdateSizeHint();
+            }
         }
         catch (Exception e) {
             onError(e);
