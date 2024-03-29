@@ -4,7 +4,7 @@
 - This is <b>not</b> an official C# SDK of Finnhub. This is a personal project aimed to contribute to the open-source community.
 
 #### Installation
-- .NET CLI: ```dotnet add package FinnhubDotNet --version 1.0.5```
+- .NET CLI: ```dotnet add package FinnhubDotNet --version 1.0.9```
 - Or search <b>FinnhubDotNet</b> in Visual Studio using NugetPackageManager.
 - Or download the <b>./FinnhubDotNet</b> folder and build the class library locally.
 
