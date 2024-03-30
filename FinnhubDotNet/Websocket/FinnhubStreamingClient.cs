@@ -63,10 +63,7 @@ public class FinnhubStreamingClient : IDisposable {
     }
 
     private void DeserializeAndNotify(string texts) {
-        JsonLoadSettings settings = new JsonLoadSettings();
-        settings.CommentHandling = CommentHandling.Ignore;
-        settings.LineInfoHandling = LineInfoHandling.Ignore;
-        var token = JToken.Parse(texts, settings);
+        var token = JToken.Parse(texts, null);
         var messageType = token["type"].ToString();
         switch (messageType) {
             case MessageType.error:
