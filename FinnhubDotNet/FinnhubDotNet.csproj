@@ -1,34 +1,36 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-    <OutputType>Library</OutputType>
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Company />
-    <Authors>Chaconn3</Authors>
-    <Description>A non-official C# wrapper of the Finnhub websocket client.</Description>
-    <RepositoryUrl>https://github.com/Chacoon3/FinnhubDotNet</RepositoryUrl>
-    <RepositoryType>git</RepositoryType>
-    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
-    <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
-    <FileVersion>{$Version}</FileVersion>
-    <PackageReleaseNotes>Performance improvement.</PackageReleaseNotes>
-    <Version>1.0.13</Version>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>disable</Nullable>
+		<OutputType>Library</OutputType>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Company />
+		<Authors>Chaconn3</Authors>
+		<Description>An efficient C# wrapper of the Finnhub websocket client.</Description>
+		<RepositoryUrl>https://github.com/Chacoon3/FinnhubDotNet</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+		<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<FileVersion>{$Version}</FileVersion>
+		<PackageReleaseNotes>Performance improvement.</PackageReleaseNotes>
+		<Version>1.0.13</Version>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <None Include="..\.editorconfig" Link=".editorconfig" />
-    <None Include="..\LICENSE.txt">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<None Include="..\.editorconfig" Link=".editorconfig" />
+		<None Include="..\LICENSE.txt">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
+	</ItemGroup>
 
 </Project>

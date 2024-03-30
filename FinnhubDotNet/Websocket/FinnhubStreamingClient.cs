@@ -9,7 +9,7 @@ using System.Text;
 namespace FinnhubDotNet.Websocket;
 public class FinnhubStreamingClient : IDisposable {
 
-    ClientWebSocket websocket;
+    private readonly ClientWebSocket websocket;
     private readonly Uri uri;
     private readonly Pipe inbound;
     private readonly object counterLock = new object();
@@ -25,7 +25,7 @@ public class FinnhubStreamingClient : IDisposable {
     public event Action<Exception> onError = delegate { };
     #endregion
 
-    public WebSocketCloseStatus? closeStatus => websocket?.CloseStatus;
+    public WebSocketCloseStatus? closeStatus => websocket.CloseStatus;
     public WebSocketState state {
         get {
             if (websocket == null) {
@@ -38,14 +38,15 @@ public class FinnhubStreamingClient : IDisposable {
 
     public FinnhubStreamingClient(string key) {
         uri = new Uri($"wss://ws.finnhub.io?token={key}");
-        var pipeOptions = new PipeOptions(minimumSegmentSize: 4096);
+        var pipeOptions = new PipeOptions(minimumSegmentSize: 4096, useSynchronizationContext: false);
         inbound = new Pipe(pipeOptions);
+        websocket = new ClientWebSocket();
     }
 
     private void UpdateSizeHint() {
         /*
           * one trade is about 134bytes, the rest is about 60b.
-          * assume 10 trades per symbol per message. the overall size of a message is 60 + 134 * 5 * S where S is the number of symbols.
+          * assume 10 trades per symbol per message. the overall size of a message is 60 + 134 * 10 * S where S is the number of symbols.
           */
         int min = 4096; // at least 4KB
         int max = 1024 * 1024; // at most 1 mb
@@ -144,57 +145,24 @@ public class FinnhubStreamingClient : IDisposable {
     }
     #endregion
 
-    /// <summary>
-    /// Create a new client websocket instance and connect it to Finnhub.
-    /// </summary>
-    /// <remarks>Connect event will be raised only if there is no active websocket and a new instance is created</remarks>
     public async Task ConnectAsync() {
-        bool isInactive;
-        if (websocket != null) {
-            switch (websocket.State) {
-                case WebSocketState.Connecting:
-                case WebSocketState.Open:
-                    isInactive = false;
-                    break;
-                default:
-                    isInactive = true;
-                    break;
-            }
-        }
-        else {
-            isInactive = true;
-        }
-
-        if (isInactive) {
-            countSubscriptions = 0;
-            websocket = new ClientWebSocket();
-            await websocket.ConnectAsync(uri, CancellationToken.None);
-            await Task.Factory.StartNew(ReceiveLoop, TaskCreationOptions.LongRunning);
-            onConnected(this);
-        }
+        countSubscriptions = 0;
+        await websocket.ConnectAsync(uri, CancellationToken.None);
+        await Task.Factory.StartNew(ReceiveLoop, TaskCreationOptions.LongRunning);
+        onConnected(this);
     }
 
-    /// <summary>
-    /// Disconnect and dispose current websocket instance if any.
-    /// </summary>
-    /// <remarks>Disconnect event will be raised only if there is an active websocket being closed</remarks>
     public async Task DisconnectAsync() {
-        if (websocket == null) {
-            return;
-        }
-        if (websocket.State == WebSocketState.Open || websocket.State == WebSocketState.Connecting) {
-            await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-            onDisconnected(this);
-        }
-        websocket.Dispose();
-        websocket = null;
         inbound.Reader.Complete();
         inbound.Writer.Complete();
         inbound.Reset();
+        await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+        onDisconnected(this);
     }
 
     public void Dispose() {
         DisconnectAsync().Wait();
+        websocket.Dispose();
         GC.SuppressFinalize(this);
     }
 }
