@@ -36,11 +36,5 @@ namespace Test {
 - Efficient data handling: The data receiving logic is implemented with a pipe, minimizing memory overheads and ensuring low latency.
 - Minimalistic interfaces.
 
-#### Upcoming Updates
-- REST endpoints.
-
-#### Known Issues
-- The author currently does not have Finnhub premium. As a result, the news subsciprtion and the press release subscription have not yet been tested. If you find any problems with those two subscriptions, you are very welcome to let me know.
-
 #### Contact/Contribute
 - My email is zizh3ng@gmail.com. Please let me know if you have any suggestions or questions on this project.
