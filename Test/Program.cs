@@ -13,6 +13,7 @@
                     Console.WriteLine(trade);
                 }
             };
+            ws.onError += Console.WriteLine;
 
             while (true) {
                 //var k = Console.ReadKey();
