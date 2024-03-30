@@ -161,7 +161,9 @@ public class FinnhubStreamingClient : IDisposable {
     }
 
     public void Dispose() {
-        DisconnectAsync().Wait();
+        if (websocket.State == WebSocketState.Open || websocket.State == WebSocketState.Connecting) {
+            DisconnectAsync().Wait();
+        }
         websocket.Dispose();
         GC.SuppressFinalize(this);
     }

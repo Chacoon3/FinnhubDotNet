@@ -33,6 +33,9 @@
                 else if (k.Key == ConsoleKey.S) {
                     await ws.DisconnectAsync();
                 }
+                else if (k.Key == ConsoleKey.Y) {
+                    ws.Dispose();
+                }
 
                 //await Task.Delay(1000);
             }
