@@ -179,13 +179,13 @@ public class FinnhubStreamingClient : IDisposable {
     /// </summary>
     /// <remarks>Disconnect event will be raised only if there is an active websocket being closed</remarks>
     public async Task DisconnectAsync() {
-        if (websocket == null) {
-            return;
+        if (websocket != null) {
+            if (websocket.State == WebSocketState.Open || websocket.State == WebSocketState.Connecting) {
+                await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+                onDisconnected(this);
+            }
         }
-        if (websocket.State == WebSocketState.Open || websocket.State == WebSocketState.Connecting) {
-            await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
-            onDisconnected(this);
-        }
+
         websocket.Dispose();
         websocket = null;
         inbound.Reader.Complete();
