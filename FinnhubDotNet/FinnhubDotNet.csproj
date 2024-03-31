@@ -16,9 +16,9 @@
 		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<FileVersion>{$Version}</FileVersion>
 		<PackageReleaseNotes>
-			Bug fix
+			bug fix and performance improvement
 		</PackageReleaseNotes>
-		<Version>1.0.15</Version>
+		<Version>1.0.17</Version>
 	</PropertyGroup>
 
 	<ItemGroup>

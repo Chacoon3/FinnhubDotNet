@@ -1,11 +1,14 @@
-# FinnhubDotNet
+# FinnhubDotNet - clean and efficient C# websocket wrapper for Finnhub
 
 #### Disclaimer
 - This is <b>not</b> an official C# SDK of Finnhub. This is a personal project aimed to contribute to the open-source community.
 
-#### Introduction
-- This is a C# wrapper of the Finnhub Websocket client.
-- Sample usage:
+#### Installation
+- .NET CLI: ```dotnet add package FinnhubDotNet```
+- Or search <b>FinnhubDotNet</b> in Visual Studio using NugetPackageManager.
+- Or download the <b>./FinnhubDotNet</b> folder and build the class library locally.
+
+#### Sample Usage
 ```
 namespace Test {
     internal class Program {
@@ -30,13 +33,8 @@ namespace Test {
 ```
 
 #### Advantages
-- Efficient data handling: The data receiving logic is implemented with a duplex pipe, minimizing memory overheads and ensuring low latency.
+- Efficient data handling: The data receiving logic is implemented with a pipe, minimizing memory overheads and ensuring low latency.
 - Minimalistic interfaces.
-
-#### Upcoming Updates
-- REST endpoints.
-- Stability improvement.
-- Comprehensive exception handling.
 
 #### Contact/Contribute
 - My email is zizh3ng@gmail.com. Please let me know if you have any suggestions or questions on this project.
