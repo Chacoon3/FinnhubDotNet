@@ -12,7 +12,7 @@ public class FinnhubStreamingClient : IDisposable {
     private readonly ClientWebSocket websocket;
     private readonly Uri uri;
     private readonly Pipe inbound;
-    private readonly object counterLock = new object();
+    private readonly object sizehintLock = new object();
     private int countSubscriptions = 0;
     private int sizehint = 1024 * 4;
 
@@ -34,7 +34,6 @@ public class FinnhubStreamingClient : IDisposable {
             return websocket.State;
         }
     }
-
 
     public FinnhubStreamingClient(string key) {
         uri = new Uri($"wss://ws.finnhub.io?token={key}");
@@ -108,45 +107,51 @@ public class FinnhubStreamingClient : IDisposable {
             onError(e);
         }
         finally {
-            await DisconnectAsync();
+            if (websocket.State == WebSocketState.Connecting || websocket.State == WebSocketState.Open) {
+                await DisconnectAsync();
+            }
         }
     }
 
     #region subscription
-    private async Task SubscribeAsync(Subscription msg) {
+    private async ValueTask SubscribeAsync(Subscription msg) {
         try {
-            if (websocket == null) {
+            if (websocket.State != WebSocketState.Connecting && websocket.State != WebSocketState.Open) {
                 throw new StreamingException("Websocket client is not connected");
             }
-            await websocket.SendAsync(msg.ToArraySegment(), WebSocketMessageType.Text, true, CancellationToken.None);
-            lock (counterLock) {
-                countSubscriptions++;
+            else {
+                await websocket.SendAsync(msg.ToArraySegment(), WebSocketMessageType.Text, true, CancellationToken.None);
+                lock (sizehintLock) {
+                    countSubscriptions++;
+                    UpdateSizeHint();
+                }
             }
-            UpdateSizeHint();
         }
         catch (Exception e) {
             onError(e);
         }
     }
 
-    public async Task SubscribeTradeAsync(string symbol) {
+    public async ValueTask SubscribeTradeAsync(string symbol) {
         var msg = Subscription.GetTradeSubscription(symbol);
         await SubscribeAsync(msg);
     }
 
-    public async Task SubscribeNewsAsync(string symbol) {
+    public async ValueTask SubscribeNewsAsync(string symbol) {
         var msg = Subscription.GetNewsSubscription(symbol);
         await SubscribeAsync(msg);
     }
 
-    public async Task SubscribePressReleaseAsync(string symbol) {
+    public async ValueTask SubscribePressReleaseAsync(string symbol) {
         var msg = Subscription.GetPressReleaseSubscription(symbol);
         await SubscribeAsync(msg);
     }
     #endregion
 
     public async Task ConnectAsync() {
-        countSubscriptions = 0;
+        lock (sizehintLock) {
+            countSubscriptions = 0;
+        }
         await websocket.ConnectAsync(uri, CancellationToken.None);
         await Task.Factory.StartNew(ReceiveLoop, TaskCreationOptions.LongRunning);
         onConnected(this);

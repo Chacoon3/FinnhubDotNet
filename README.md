@@ -1,4 +1,4 @@
-# FinnhubDotNet - clean and efficient C# wrapper for Finnhub
+# FinnhubDotNet - clean and efficient C# websocket wrapper for Finnhub
 
 #### Disclaimer
 - This is <b>not</b> an official C# SDK of Finnhub. This is a personal project aimed to contribute to the open-source community.
