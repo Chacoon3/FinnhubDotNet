@@ -37,7 +37,7 @@ public class FinnhubStreamingClient : IDisposable {
 
     public FinnhubStreamingClient(string key) {
         uri = new Uri($"wss://ws.finnhub.io?token={key}");
-        var pipeOptions = new PipeOptions(minimumSegmentSize: 4096, useSynchronizationContext: false);
+        var pipeOptions = new PipeOptions(minimumSegmentSize: 4096, useSynchronizationContext: true);
         inbound = new Pipe(pipeOptions);
         websocket = new ClientWebSocket();
     }
@@ -47,8 +47,8 @@ public class FinnhubStreamingClient : IDisposable {
           * one trade is about 134bytes, the rest is about 60b.
           * assume 10 trades per symbol per message. the overall size of a message is 60 + 134 * 10 * S where S is the number of symbols.
           */
-        int min = 4096; // at least 4KB
-        int max = 1024 * 1024; // at most 1 mb
+        int min = 4096; 
+        int max = 4 * 1024 * 1024; 
         int estimate = 60 + 134 * 10 * countSubscriptions;
         if (estimate < min) {
             estimate = min;
