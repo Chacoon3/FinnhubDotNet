@@ -2,19 +2,23 @@
 using FinnhubDotNet.Websocket.Message;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Buffers;
+using System.Collections.Concurrent;
 using System.IO.Pipelines;
 using System.Net.WebSockets;
 using System.Text;
 
 namespace FinnhubDotNet.Websocket;
 public class FinnhubStreamingClient : IDisposable {
-
+    JsonLoadSettings jsonLoadSettings = new JsonLoadSettings {
+        CommentHandling = CommentHandling.Ignore,
+        LineInfoHandling = LineInfoHandling.Ignore
+    };
     private readonly ClientWebSocket websocket;
     private readonly Uri uri;
     private readonly Pipe inbound;
-    private readonly object sizehintLock = new object();
-    private int countSubscriptions = 0;
     private int sizehint = 1024 * 4;
+    private BlockingCollection<byte[]> messageQueue = new BlockingCollection<byte[]>();
 
     #region event
     public event Action<Trade[]> tradeUpdate = delegate { };
@@ -37,32 +41,13 @@ public class FinnhubStreamingClient : IDisposable {
 
     public FinnhubStreamingClient(string key) {
         uri = new Uri($"wss://ws.finnhub.io?token={key}");
-        var pipeOptions = new PipeOptions(minimumSegmentSize: 4096, useSynchronizationContext: false);
+        var pipeOptions = new PipeOptions(minimumSegmentSize: 4096, useSynchronizationContext: true);
         inbound = new Pipe(pipeOptions);
         websocket = new ClientWebSocket();
     }
 
-    private void UpdateSizeHint() {
-        /*
-          * one trade is about 134bytes, the rest is about 60b.
-          * assume 10 trades per symbol per message. the overall size of a message is 60 + 134 * 10 * S where S is the number of symbols.
-          */
-        int min = 4096; // at least 4KB
-        int max = 1024 * 1024; // at most 1 mb
-        int estimate = 60 + 134 * 10 * countSubscriptions;
-        if (estimate < min) {
-            estimate = min;
-        }
-        if (estimate % min != 0) {
-            estimate = ((estimate / min) + 1) * min;
-        }
-        if (estimate > max) {
-            estimate = max;
-        }
-        sizehint = estimate;
-    }
-
     private void DeserializeAndNotify(string texts) {
+        Console.WriteLine(texts);
         var token = JToken.Parse(texts, null);
         var messageType = token["type"].ToString();
         switch (messageType) {
@@ -88,27 +73,62 @@ public class FinnhubStreamingClient : IDisposable {
         }
     }
 
-    private async void ReceiveLoop() {
-        try {
-            while (websocket.State == WebSocketState.Open) {
+    private void DeserializeAndNotifyAsync(byte[] data) {
+        var texts = Encoding.UTF8.GetString(data);
+
+        var token = JToken.Parse(texts, jsonLoadSettings);
+        var messageType = token["type"].ToString();
+        switch (messageType) {
+            case MessageType.error:
+                var msg = token["msg"].ToString();
+                onError(new StreamingException(msg));
+                break;
+            case MessageType.tradeUpdate:
+                var payload = token["data"].ToString();
+                var trade = JsonConvert.DeserializeObject<Trade[]>(payload);
+                tradeUpdate(trade);
+                break;
+            case MessageType.newsUpdate:
+                payload = token["data"].ToString();
+                var news = JsonConvert.DeserializeObject<News[]>(payload);
+                newsUpdate(news);
+                break;
+            case MessageType.pressReleaseUpdate:
+                payload = token["data"].ToString();
+                var pressRelease = JsonConvert.DeserializeObject<PressRelease[]>(payload);
+                pressReleaseUpdate(pressRelease);
+                break;
+        }
+    }
+
+    private async void ProducerLoop() {
+        while (websocket.State == WebSocketState.Open) {
+            try {
                 var memory = inbound.Writer.GetMemory(sizehint);
                 var data = await websocket.ReceiveAsync(memory, CancellationToken.None).ConfigureAwait(false);
                 inbound.Writer.Advance(data.Count);
                 if (data.EndOfMessage) {
-                    await inbound.Writer.FlushAsync().ConfigureAwait(false);
+                    var res = await inbound.Writer.FlushAsync().ConfigureAwait(false);
                     var rawData = await inbound.Reader.ReadAsync().ConfigureAwait(false);
-                    var texts = Encoding.UTF8.GetString(rawData.Buffer);
+                    var copy = rawData.Buffer.ToArray();
+                    //ThreadPool.QueueUserWorkItem(DeserializeAndNotifyAsync, copy, false);
+                    messageQueue.Add(copy);
                     inbound.Reader.AdvanceTo(rawData.Buffer.End);
-                    DeserializeAndNotify(texts);
                 }
             }
+            catch (Exception e) {
+                onError(e);
+            }
         }
-        catch (Exception e) {
-            onError(e);
-        }
-        finally {
-            if (websocket.State == WebSocketState.Connecting || websocket.State == WebSocketState.Open) {
-                await DisconnectAsync();
+    }
+
+    private void ConsumerLoop() {
+        foreach (var data in messageQueue.GetConsumingEnumerable()) {
+            try {
+                DeserializeAndNotifyAsync(data);
+            }
+            catch (Exception e) {
+                onError(e);
             }
         }
     }
@@ -121,10 +141,6 @@ public class FinnhubStreamingClient : IDisposable {
             }
             else {
                 await websocket.SendAsync(msg.ToArraySegment(), WebSocketMessageType.Text, true, CancellationToken.None);
-                lock (sizehintLock) {
-                    countSubscriptions++;
-                    UpdateSizeHint();
-                }
             }
         }
         catch (Exception e) {
@@ -149,11 +165,18 @@ public class FinnhubStreamingClient : IDisposable {
     #endregion
 
     public async Task ConnectAsync() {
-        lock (sizehintLock) {
-            countSubscriptions = 0;
-        }
         await websocket.ConnectAsync(uri, CancellationToken.None);
-        await Task.Factory.StartNew(ReceiveLoop, TaskCreationOptions.LongRunning);
+
+        var receiver = new Thread(ProducerLoop);
+        receiver.IsBackground = true;
+        receiver.Priority = ThreadPriority.Normal;
+        receiver.Start();
+
+        var eventDispatcher = new Thread(ConsumerLoop);
+        eventDispatcher.IsBackground = true;
+        eventDispatcher.Priority = ThreadPriority.Normal;
+        eventDispatcher.Start();
+
         onConnected(this);
     }
 
@@ -165,11 +188,12 @@ public class FinnhubStreamingClient : IDisposable {
         onDisconnected(this);
     }
 
+#pragma warning disable CA1816 // Dispose methods should call SuppressFinalize
     public void Dispose() {
         if (websocket.State == WebSocketState.Open || websocket.State == WebSocketState.Connecting) {
             DisconnectAsync().Wait();
         }
         websocket.Dispose();
-        GC.SuppressFinalize(this);
     }
+#pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
 }

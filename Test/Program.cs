@@ -7,7 +7,6 @@
             await ws.ConnectAsync();
             await ws.SubscribeTradeAsync("BINANCE:BTCUSDT");
             await ws.SubscribeTradeAsync("BINANCE:ETHUSDT");
-            await ws.SubscribeNewsAsync("AAPL");
             ws.tradeUpdate += (trades) => {
                 Console.WriteLine(trades.Count());
                 foreach (var trade in trades) {
@@ -20,9 +19,8 @@
                 var k = Console.ReadKey();
                 if (k.Key == ConsoleKey.T) {
                     await ws.ConnectAsync();
-                    await ws.SubscribeTradeAsync("BINANCE:BTCUSDT");
-                    await ws.SubscribeTradeAsync("BINANCE:ETHUSDT");
-                    await ws.SubscribeNewsAsync("AAPL");
+                    await ws.SubscribeTradeAsync("AAPL");
+                    await ws.SubscribeTradeAsync("NVDA");
                     ws.tradeUpdate += (trades) => {
                         Console.WriteLine(trades.Count());
                         foreach (var trade in trades) {
@@ -37,7 +35,7 @@
                     ws.Dispose();
                 }
 
-                //await Task.Delay(1000);
+                await Task.Delay(100000);
             }
         }
     }
