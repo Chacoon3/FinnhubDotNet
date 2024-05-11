@@ -17,8 +17,9 @@ public class FinnhubStreamingClient : IDisposable {
     private readonly ClientWebSocket websocket;
     private readonly Uri uri;
     private readonly Pipe inbound;
-    private int sizehint = 1024 * 4;
+    private int sizehint = 1024 * 2;
     private BlockingCollection<byte[]> messageQueue = new BlockingCollection<byte[]>();
+    private CancellationTokenSource cts = new CancellationTokenSource();
 
     #region event
     public event Action<Trade[]> tradeUpdate = delegate { };
@@ -39,41 +40,15 @@ public class FinnhubStreamingClient : IDisposable {
         }
     }
 
-    public FinnhubStreamingClient(string key) {
+    public FinnhubStreamingClient(string key, int receiveBuffer = 16 * 1024) {
         uri = new Uri($"wss://ws.finnhub.io?token={key}");
         var pipeOptions = new PipeOptions(minimumSegmentSize: 4096, useSynchronizationContext: true);
         inbound = new Pipe(pipeOptions);
         websocket = new ClientWebSocket();
+        websocket.Options.SetBuffer(receiveBuffer, 1024);
     }
 
-    private void DeserializeAndNotify(string texts) {
-        Console.WriteLine(texts);
-        var token = JToken.Parse(texts, null);
-        var messageType = token["type"].ToString();
-        switch (messageType) {
-            case MessageType.error:
-                var msg = token["msg"].ToString();
-                onError(new StreamingException(msg));
-                break;
-            case MessageType.tradeUpdate:
-                var payload = token["data"].ToString();
-                var trade = JsonConvert.DeserializeObject<Trade[]>(payload);
-                tradeUpdate(trade);
-                break;
-            case MessageType.newsUpdate:
-                payload = token["data"].ToString();
-                var news = JsonConvert.DeserializeObject<News[]>(payload);
-                newsUpdate(news);
-                break;
-            case MessageType.pressReleaseUpdate:
-                payload = token["data"].ToString();
-                var pressRelease = JsonConvert.DeserializeObject<PressRelease[]>(payload);
-                pressReleaseUpdate(pressRelease);
-                break;
-        }
-    }
-
-    private void DeserializeAndNotifyAsync(byte[] data) {
+    private void DeserializeAndNotify(byte[] data) {
         var texts = Encoding.UTF8.GetString(data);
 
         var token = JToken.Parse(texts, jsonLoadSettings);
@@ -111,7 +86,6 @@ public class FinnhubStreamingClient : IDisposable {
                     var res = await inbound.Writer.FlushAsync().ConfigureAwait(false);
                     var rawData = await inbound.Reader.ReadAsync().ConfigureAwait(false);
                     var copy = rawData.Buffer.ToArray();
-                    //ThreadPool.QueueUserWorkItem(DeserializeAndNotifyAsync, copy, false);
                     messageQueue.Add(copy);
                     inbound.Reader.AdvanceTo(rawData.Buffer.End);
                 }
@@ -123,13 +97,18 @@ public class FinnhubStreamingClient : IDisposable {
     }
 
     private void ConsumerLoop() {
-        foreach (var data in messageQueue.GetConsumingEnumerable()) {
-            try {
-                DeserializeAndNotifyAsync(data);
+        try {
+            foreach (var data in messageQueue.GetConsumingEnumerable(cts.Token)) {
+                try {
+                    DeserializeAndNotify(data);
+                }
+                catch (Exception e) {
+                    onError(e);
+                }
             }
-            catch (Exception e) {
-                onError(e);
-            }
+        }
+        catch (OperationCanceledException) {
+            //this suggests we are gracefully stopping so no need to raise
         }
     }
 
@@ -185,6 +164,7 @@ public class FinnhubStreamingClient : IDisposable {
         inbound.Writer.Complete();
         inbound.Reset();
         await websocket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+        cts.Cancel();
         onDisconnected(this);
     }
 
@@ -193,6 +173,7 @@ public class FinnhubStreamingClient : IDisposable {
         if (websocket.State == WebSocketState.Open || websocket.State == WebSocketState.Connecting) {
             DisconnectAsync().Wait();
         }
+        cts.Dispose();
         websocket.Dispose();
     }
 #pragma warning restore CA1816 // Dispose methods should call SuppressFinalize
