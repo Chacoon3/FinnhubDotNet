@@ -35,6 +35,3 @@ namespace Test {
 #### Advantages
 - Efficient data handling: The data receiving logic is implemented with a pipe and a two-thread producer-consumer pattern, minimizing memory overheads and ensuring low latency.
 - Minimalistic interfaces.
-
-#### Contact/Contribute
-- My email is zizh3ng@gmail.com. Please let me know if you have any suggestions or questions on this project.
