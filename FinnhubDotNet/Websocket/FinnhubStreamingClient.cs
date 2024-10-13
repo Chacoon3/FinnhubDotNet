@@ -17,7 +17,7 @@ public class FinnhubStreamingClient : IDisposable {
     private readonly ClientWebSocket websocket;
     private readonly Uri uri;
     private readonly Pipe inbound;
-    private int sizehint = 1024 * 2;
+    private const int sizehint = 1024 * 2;
     private BlockingCollection<byte[]> messageQueue = new BlockingCollection<byte[]>();
     private CancellationTokenSource cts = new CancellationTokenSource();
 
@@ -34,7 +34,7 @@ public class FinnhubStreamingClient : IDisposable {
     public WebSocketState state {
         get {
             if (websocket == null) {
-                return WebSocketState.Closed;
+                return WebSocketState.None;
             }
             return websocket.State;
         }
@@ -42,7 +42,7 @@ public class FinnhubStreamingClient : IDisposable {
 
     public FinnhubStreamingClient(string key, int receiveBuffer = 16 * 1024) {
         uri = new Uri($"wss://ws.finnhub.io?token={key}");
-        var pipeOptions = new PipeOptions(minimumSegmentSize: 4096, useSynchronizationContext: true);
+        var pipeOptions = new PipeOptions(minimumSegmentSize: sizehint, useSynchronizationContext: true);
         inbound = new Pipe(pipeOptions);
         websocket = new ClientWebSocket();
         websocket.Options.SetBuffer(receiveBuffer, 1024);
